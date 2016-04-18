@@ -1,0 +1,163 @@
+program esclavolab
+
+symbol LedRojo=portc.0
+symbol LerVerde=portc.1
+
+
+dim CRC_ok as boolean
+dim Esclavo as byte
+dim Temp as word
+dim Suma as word
+dim Iter as byte
+dim Pob as byte
+dim Temp1_H as byte
+dim Temp1_L as byte
+dim Entrada1 as byte
+dim Entrada2 as byte
+dim Version_H as byte
+dim Version_L as byte
+dim Recivido as byte
+dim Llamada as byte[4]
+dim Mensaje as byte[96]
+dim Longitud as byte
+dim CRC as word
+dim CRC_H as byte
+dim CRC_L as byte
+dim bites as byte
+
+sub procedure CalcularCRC()
+    crc=65535
+    for iter=0 to Longitud - 1
+        crc=crc xor mensaje[iter]
+        for bites= 1 to 8
+            if crc mod 2 then
+               crc=(crc / 2) xor 40961
+            else
+                crc=crc / 2
+            end if
+        next bites
+    next iter
+    CRC_h=hi(crc)
+    CRC_l=lo(crc)
+end sub
+sub procedure interrupt()
+    GIE_bit = 0
+    if uart1_data_ready=1 then
+        Recivido=uart1_read
+        llamada[0]=llamada[1]
+        llamada[1]=llamada[2]
+        llamada[2]=llamada[3]
+        llamada[3]=recivido
+        if Llamada[1]=esclavo then
+            mensaje[0]=llamada[0]
+            Mensaje[1]=llamada[1]
+            Longitud=2
+            CalcularCRC
+            CRC_ok=false
+            if Llamada[3]=crc_h then
+                if Llamada[2]=crc_l then
+                    if Llamada[0]=15 then
+                        ledrojo=0                ' encender led rojo
+                        portc.1=1                ' apagar led verde
+                    end if
+                    if Llamada[0]=6 then
+                        portc.0=1                ' apagar el led rojo
+                        portc.1=0                ' encender led verde
+                            'LimpiaPerro=0
+                        porta.4=1
+                    end if
+                    if Llamada[0]=5 then
+                        clrwdt
+                        CRC_ok=true
+                        porta.5=0
+                        adc_init
+                        Suma=0
+                        for Iter=1 to 3
+                            Temp = adc_read(0)
+                            Suma=suma+temp
+                        next Iter
+                        Temp=suma/3
+                        Temp1_H=hi(temp)
+                        Temp1_L=lo(temp)
+                        if portc.2=0 then
+                            Entrada1=0
+                        else
+                            Entrada1=1
+                        end if
+                        if portc.3=0 then
+                            Entrada2=0
+                        else
+                            Entrada2=1
+                        end if
+                        longitud=94
+                        Mensaje[0]=0
+                        mensaje[1]=esclavo
+                        Mensaje[2]=temp1_h
+                        Mensaje[3]=temp1_l
+                        Mensaje[4]=0
+                        Mensaje[5]=0
+                        Mensaje[6]=entrada1
+                        Mensaje[7]=entrada2
+
+                        Mensaje[8]=49
+                        mensaje[9]=48
+                        Mensaje[10]=48
+                        Mensaje[11]=58
+                        
+                        Mensaje[92]=version_h
+                        Mensaje[93]=version_l
+                        clrwdt
+                        calcularcrc
+                        portc.1=0
+                        portc.4=1
+                        portc.5=1
+                        for Iter=0 to longitud   -1
+                            uart1_write(mensaje[iter])
+                        next iter
+                        uart1_write(crc_l)
+                        uart1_write(crc_h)
+                        clrwdt
+                        delay_ms(5)
+                        portc.4=0
+                        portc.5=0
+                        porta.5=1
+                        portc.1=1
+                    end if
+                end if
+            end if
+
+        end if
+    end if
+    GIE_bit = 1
+end sub
+
+main:
+    trisa=%00001111
+    adcon1=%1101
+    trisb=0
+    trisc=%10001100
+    option_reg=%01111111
+    Version_H=2
+    Version_L=5
+    Esclavo=eeprom_read(0)
+
+    for Iter=0 to 95
+        Mensaje[iter]=32
+    next iter
+    portc.4=0
+    portc.5=0
+    porta.4=1
+    porta.5=1
+    portc.0=1
+    portc.1=1
+
+    uart1_init(9600)
+    RCIE_bit = 1                  ' enable interrupt on UART1 receive
+    TXIE_bit = 0                  ' disable interrupt on UART1 transmit
+    PEIE_bit = 1                  ' enable peripheral interrupts
+    GIE_bit = 1                   ' enable all interrupts
+    clrwdt
+    while true
+        nop
+    wend
+end.
