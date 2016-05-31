@@ -11,3 +11,11 @@
 * Fotos
 
 * Capturas de pantalla
+
+---
+![WIN_20160414_15_28_23_Pro.jpg](/Fotos/WIN_20160414_15_28_23_Pro.jpg)
+---
+![WIN_20160414_15_28_25_Pro.jpg](/Fotos/WIN_20160414_15_28_25_Pro.jpg)
+---
+![WIN_20160414_15_28_41_Pro.jpg](/Fotos/WIN_20160414_15_28_41_Pro.jpg)
+---
